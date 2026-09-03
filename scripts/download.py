@@ -21,7 +21,7 @@ VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".mov", ".m4v", ".avi", ".flv", ".wmv"}
 # Kept deliberately short — the real selection is native-language-first (see
 # resolve_sub_langs). The model understands any language, so we never need to
 # force English; we just need *a* transcript in *some* language.
-DEFAULT_SUB_FALLBACK = ["en", "en-US", "en-orig"]
+DEFAULT_SUB_FALLBACK = ["en", "en-US", "en-orig", "eng-US"]  # eng-US: TikTok ASR track (upstream PR #18)
 
 
 def _probe_metadata(url: str) -> dict:
