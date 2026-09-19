@@ -33,6 +33,11 @@ def _fmt_time(seconds: float) -> str:
     return f"{m:02d}:{s:02d}"
 
 
+def _one_line(value) -> str:
+    """Collapse whitespace so a multi-line title cannot break the H1."""
+    return " ".join(str(value).split())
+
+
 def _yaml_str(value) -> str:
     """Double-quoted YAML scalar; JSON string syntax is a valid YAML subset.
 
@@ -80,7 +85,7 @@ def write_report(
     lines.append("---")
     lines.append("")
 
-    lines.append(f"# {title}")
+    lines.append(f"# {_one_line(title)}")
     lines.append("")
 
     lines.append("## TL;DR")

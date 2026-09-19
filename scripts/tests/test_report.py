@@ -52,8 +52,8 @@ class TestReport(unittest.TestCase):
 
         text = out.read_text(encoding="utf-8")
         self.assertTrue(text.startswith("---\n"))
-        self.assertIn("source: https://youtu.be/test", text)
-        self.assertIn("intent: studying hook patterns", text)
+        self.assertIn('source: "https://youtu.be/test"', text)
+        self.assertIn('intent: "studying hook patterns"', text)
         self.assertIn("hero_frames:", text)
         for header in (
             "# Test Video",
