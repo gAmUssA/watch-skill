@@ -114,6 +114,11 @@ def resolve_sub_langs(meta: dict) -> tuple[list[str], str | None]:
     # Cap the request: native + manual + EN is enough. We never want to ask
     # yt-dlp for hundreds of machine-translated auto tracks (slow, rate-limits).
     return ordered[:6], native
+# A 100-frame preview never needs a multi-gigabyte source, and a live stream
+# has no end at all - without these the download is unbounded in both size
+# and time.
+MAX_DOWNLOAD_SIZE = "2G"
+DOWNLOAD_TIMEOUT_SECONDS = 1800
 
 
 def is_url(source: str) -> bool:
@@ -197,6 +202,8 @@ def download_url(url: str, out_dir: Path) -> dict:
         "--convert-subs", "vtt",
         "--no-playlist",
         "--ignore-errors",
+        "--match-filter", "!is_live",
+        "--max-filesize", MAX_DOWNLOAD_SIZE,
         "-o", output_template,
         "--",
         url,
@@ -204,7 +211,16 @@ def download_url(url: str, out_dir: Path) -> dict:
 
     # yt-dlp may exit non-zero if a subtitle variant fails (e.g. 429) even when
     # the video itself downloaded fine. Treat "video file present" as success.
-    result = subprocess.run(cmd, stdout=sys.stderr, stderr=sys.stderr)
+    try:
+        result = subprocess.run(
+            cmd, stdout=sys.stderr, stderr=sys.stderr,
+            timeout=DOWNLOAD_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            f"yt-dlp exceeded {DOWNLOAD_TIMEOUT_SECONDS}s and was stopped. "
+            f"Re-run against a shorter source, or use --start/--end."
+        )
     video = _pick_video(out_dir)
     if video is None:
         raise SystemExit(
