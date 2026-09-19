@@ -33,10 +33,20 @@ def _fmt_time(seconds: float) -> str:
     return f"{m:02d}:{s:02d}"
 
 
+def _yaml_str(value) -> str:
+    """Double-quoted YAML scalar; JSON string syntax is a valid YAML subset.
+
+    The title and source come from the uploader via yt-dlp, so they can carry
+    colons, quotes, newlines or a leading '&' - any of which turn unquoted
+    frontmatter into either invalid YAML or a different key than intended.
+    """
+    return json.dumps("" if value is None else str(value), ensure_ascii=False)
+
+
 def _yaml_list(items: list[str]) -> str:
     if not items:
         return "[]"
-    return "[" + ", ".join(items) + "]"
+    return "[" + ", ".join(_yaml_str(i) for i in items) + "]"
 
 
 def write_report(
@@ -60,13 +70,13 @@ def write_report(
     lines: list[str] = []
 
     lines.append("---")
-    lines.append(f"source: {source}")
-    lines.append(f"title: {title}")
+    lines.append(f"source: {_yaml_str(source)}")
+    lines.append(f"title: {_yaml_str(title)}")
     lines.append(f"duration: {_fmt_time(duration_seconds)}")
     lines.append(f"watched_at: {watched_at.isoformat()}")
-    lines.append(f"intent: {intent or '(none)'}")
+    lines.append(f"intent: {_yaml_str(intent or '(none)')}")
     lines.append(f"hero_frames: {_yaml_list(hero_names)}")
-    lines.append(f"transcript_source: {transcript_source or 'none'}")
+    lines.append(f"transcript_source: {_yaml_str(transcript_source or 'none')}")
     lines.append("---")
     lines.append("")
 
