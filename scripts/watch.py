@@ -7,6 +7,7 @@ then Reads each frame path to see the video.
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -99,8 +100,10 @@ def main() -> int:
 
     if args.out_dir:
         work = Path(args.out_dir).expanduser().resolve()
+        work_is_temp = False
     else:
         work = Path(tempfile.mkdtemp(prefix="watch-"))
+        work_is_temp = True
     work.mkdir(parents=True, exist_ok=True)
     print(f"[watch] working dir: {work}", file=sys.stderr)
 
@@ -273,6 +276,15 @@ def main() -> int:
 
     # Build report.md (the ingest-ready artifact).
     hero_frames = select_hero_frames(frames, pacing=pacing)
+    # A user-supplied --out-dir may be a real directory of theirs. Never
+    # silently destroy a report.md that was already sitting in it.
+    if not work_is_temp:
+        existing_report = work / "report.md"
+        if existing_report.exists():
+            backup = work / "report.md.bak"
+            shutil.copy2(existing_report, backup)
+            print(f"[watch] existing report.md backed up to {backup}", file=sys.stderr)
+
     report_path = write_report(
         out_path=work / "report.md",
         source=args.source,
@@ -397,7 +409,14 @@ def main() -> int:
     print()
     print("---")
     print(f"_Report (ingest-ready): `{report_path}`_")
-    print(f"_Work dir: `{work}` — delete when done._")
+    if work_is_temp:
+        print(f"_Work dir (temporary, created by this run - safe to delete): `{work}`_")
+    else:
+        print(
+            f"_Work dir: `{work}` - you supplied this with --out-dir, so it is "
+            f"yours. Do NOT delete it; remove only `frames/`, `download/` and "
+            f"`report.md` if you want to clean up._"
+        )
 
     return 0
 
