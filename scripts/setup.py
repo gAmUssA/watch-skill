@@ -59,6 +59,12 @@ def _check_binaries() -> list[str]:
 
 def _check_file_permissions(path: Path) -> None:
     """Warn to stderr if a secrets file is world/group readable."""
+    if os.name == "nt":
+        # NTFS does not model POSIX mode bits. Python reports 0o666 for every
+        # regular file and chmod(0o600) is a silent no-op, so this check would
+        # fire on every single run recommending a `chmod` that cannot work.
+        # Confidentiality here comes from the ACL on the user's profile dir.
+        return
     try:
         mode = path.stat().st_mode
         if mode & 0o044:
@@ -242,7 +248,7 @@ def cmd_check() -> int:
     installer = Path(__file__).resolve()
     sys.stderr.write(
         f"[watch] setup incomplete ({'; '.join(parts)}). "
-        f"Run: python3 {installer}\n"
+        f"Run: {sys.executable} {installer}\n"
     )
     sys.stderr.flush()
 
