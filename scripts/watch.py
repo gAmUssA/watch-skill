@@ -28,7 +28,22 @@ from transcribe import filter_range, format_transcript, parse_vtt  # noqa: E402
 from whisper import load_api_key, transcribe_video  # noqa: E402
 
 
+def _force_utf8_stdio() -> None:
+    """Stop a non-ASCII character from killing the run before it reports.
+
+    On Windows stdout defaults to the locale codepage (cp1252 on a stock
+    en-GB/en-US install). Printing the focused-mode arrow, or any video title
+    outside Latin-1, then raises UnicodeEncodeError partway through the report.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError):  # pragma: no cover - exotic stdio
+            pass
+
+
 def main() -> int:
+    _force_utf8_stdio()
     ap = argparse.ArgumentParser(
         prog="watch",
         description="Download a video, extract auto-scaled frames, and surface the transcript.",
@@ -376,7 +391,7 @@ def main() -> int:
             "_No transcript available — proceed with frames only. "
             "Captions were missing and the Whisper fallback was unavailable "
             "(no API key set, or `--no-whisper` was used). "
-            f"Run `python3 {setup_py}` to enable Whisper, then re-run._"
+            f"Run `{sys.executable} {setup_py}` to enable Whisper, then re-run._"
         )
 
     print()
