@@ -32,6 +32,7 @@ def analyse_hook(
     backend: str | None = None,
     api_key: str | None = None,
     full_video_duration: float = 0.0,
+    allow_whisper: bool = True,
 ) -> dict:
     """Run hook microscope. Returns {frames, words, segments, ran}."""
     if full_video_duration > 0 and full_video_duration < 30.0:
@@ -48,7 +49,11 @@ def analyse_hook(
 
     words: list[dict] = []
     segments: list[dict] = []
-    if backend is None or api_key is None:
+    if not allow_whisper:
+        # --no-whisper means "do not send my audio anywhere". Re-detecting a
+        # key here would silently upload the first 10s despite the opt-out.
+        backend, api_key = None, None
+    elif backend is None or api_key is None:
         backend, api_key = load_api_key()
 
     if backend and api_key:
