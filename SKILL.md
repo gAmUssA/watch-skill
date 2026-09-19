@@ -81,7 +81,7 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/setup.py"
 
 On macOS with Homebrew, it auto-installs `ffmpeg` and `yt-dlp`. On Linux/Windows, it prints the exact install commands for the user to run. It scaffolds `~/.config/watch/.env` with commented placeholders at `0600` perms, and writes `SETUP_COMPLETE=true` once deps + a key are in place so the next session knows this user has already been through the wizard.
 
-**If an API key is still missing after install:** use `AskUserQuestion` to ask the user whether they have a Groq API key (preferred — cheaper, faster) or an OpenAI key. Then write it into `~/.config/watch/.env` — set the matching `GROQ_API_KEY=...` or `OPENAI_API_KEY=...` line. If they don't want to set up Whisper, proceed with `--no-whisper` and tell them videos without native captions will come back frames-only.
+**If an API key is still missing after install:** do **not** ask the user to type the key to you. Anything they send in chat is persisted in the session transcript and replayed to the model on every later turn, and you would then hold a live credential for the rest of a session that goes on to read untrusted video transcripts. Instead, tell them to paste it into `~/.config/watch/.env` themselves — `setup.py` has already scaffolded that file with `GROQ_API_KEY=` and `OPENAI_API_KEY=` placeholders and prints its path — then re-run `/watch`. If they don't want to set up Whisper, proceed with `--no-whisper` and tell them videos without native captions will come back frames-only.
 
 **Structured mode (optional):** `python3 "${CLAUDE_SKILL_DIR}/scripts/setup.py" --json` emits `{status, first_run, missing_binaries, whisper_backend, has_api_key, config_file, platform}` where `status` is one of `ready | needs_install | needs_key | needs_install_and_key`. Use this when you need to branch on specifics (e.g. "is this the user's very first run?" → `first_run: true`).
 
@@ -108,10 +108,10 @@ Within a single session, you can skip Step 0 on follow-up `/watch` calls — onc
 
 **Step 1 — parse the user input.** Separate the video source from any question the user asked. The question (or the user's prior stated interest) IS the intent — pass it to the script via `--intent`. Example: `/watch https://youtu.be/abc what's the hook pattern?` → source = `https://youtu.be/abc`, intent = `what's the hook pattern?`. If no question is given, use a brief inferred intent ("general summary") so the report's TL;DR has a lens. The intent shapes how the report's TL;DR and entity/concept sections get filled at Step 4 — same video with intent "pricing tactics" vs "editing style" produces different reports.
 
-**Step 2 — run the watch script.** Pass the source verbatim. Do not shell-escape it yourself beyond normal quoting:
+**Step 2 — run the watch script.** Pass the source as a **single-quoted** argument, exactly as the user gave it, and do not build the command by pasting the source into a double-quoted string. Inside double quotes the shell still expands `$(...)`, backticks and `${...}`, so a "URL" like `https://youtu.be/x$(rm -rf ~/notes)` executes before `watch.py` ever sees it. Single quotes suppress all of that; if the source itself contains a single quote, close-escape-reopen (`'it'''s'`) rather than switching to double quotes:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/watch.py" "<source>" --intent "<intent string>"
+python3 "${CLAUDE_SKILL_DIR}/scripts/watch.py" '<source>' --intent '<intent string>'
 ```
 
 Pass `--intent` whenever you have any signal from the user about why they want this video — the question they asked, a stated goal, or a brief inferred summary. Empty `--intent` works but produces less-targeted report sections.
@@ -193,7 +193,15 @@ When `$VAULT_DIR` resolves:
 
 Rationale: the report is the leverage point of /watch. If the user reads everything in Obsidian, opening in Preview or VS Code defeats the purpose. Staging at 4.4 also means Step 4.5's "Yes / Stage" branches are no-ops on the copy step (the file is already in the vault); they only differ in whether the Ingest op runs.
 
-**Cleanup implication for Step 4.5:** if the user picks "No, drop it" at 4.5 AND a vault was staged at 4.4, ALSO `rm -rf "$VAULT_DIR/raw/watched/<slug>"` since we pre-staged. Do NOT drop the vault copy if they picked Yes or Stage.
+**Cleanup implication for Step 4.5:** if the user picks "No, drop it" at 4.5 AND a vault was staged at 4.4, ALSO remove that one staging directory. Shell variables do not survive between Bash calls, so re-derive `$VAULT_DIR` in the *same* command and refuse to run on an empty slug — otherwise the path collapses to `/raw/watched/` and takes every previously staged report with it:
+
+```bash
+SLUG='<slug>'   # literal, already derived; must be non-empty
+VAULT_DIR="${WATCH_VAULT_DIR:?vault not set}"
+[ -n "$SLUG" ] && [ -d "$VAULT_DIR/raw/watched/$SLUG" ] && rm -rf "$VAULT_DIR/raw/watched/$SLUG"
+```
+
+Do NOT drop the vault copy if they picked Yes or Stage.
 
 **Step 4.5 — Offer ingest into the Obsidian vault.** **Skip this step entirely if no vault was detected at Step 4.4.** Otherwise use `AskUserQuestion` once, with these options (do NOT skip if a vault was found unless the user explicitly said "don't ingest" before /watch ran):
 
@@ -219,11 +227,16 @@ Routing based on response:
 2. Do NOT touch the wiki. Do NOT append to `log.md`.
 3. Tell the user in chat: "Staged at `$(basename $VAULT_DIR)/raw/watched/<slug>/`. Run an Ingest op against it when you're ready."
 
-**C. No, drop it:** proceed to Step 5 (cleanup) — and per the cleanup-implication note in Step 4.4, `rm -rf "$VAULT_DIR/raw/watched/<slug>"` to undo the pre-staging.
+**C. No, drop it:** proceed to Step 5 (cleanup) — and undo the pre-staging using the guarded command in the Step 4.4 cleanup note (never a bare `rm -rf "$VAULT_DIR/raw/watched/<slug>"`, which deletes the whole staging tree when either variable is empty).
 
 The "different angle" path is what makes /watch truly plug-and-play — the user can watch a video for one reason, then on the way out decide it's actually more useful for a different concept, and the resulting wiki entry reframes accordingly.
 
-**Step 5 — clean up.** The script prints a working directory at the end. If you ingested (Step 4.5 path A), the hero frames + report.md are already copied to Second Brain — you can `rm -rf` the original workdir. If you staged (path B), same — the workdir copy is no longer needed. If the user picked "no, drop it" (path C) and isn't going to ask follow-ups, delete with `rm -rf <dir>`. If they might ask follow-ups, leave it in place.
+**Step 5 — clean up.** The script's last line says which kind of working directory it used, and that is the only thing you may act on:
+
+- `_Work dir (temporary, created by this run - safe to delete): <path>_` — this is a `mkdtemp` scratch dir. If the user is not going to ask follow-ups, `rm -rf` it.
+- `_Work dir: <path> - you supplied this with --out-dir, so it is yours._` — **never** `rm -rf` this. It is a directory the user chose and may hold files that predate this run. At most remove the `frames/` and `download/` subdirectories the script created inside it, and only if asked.
+
+If the user might ask follow-ups, leave everything in place either way — re-running costs a download and a full frame extraction.
 
 ## Transcription
 
