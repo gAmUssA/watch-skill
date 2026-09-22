@@ -180,8 +180,8 @@ The fully-filled `report.md` is what gets ingested at Step 4.5. Do not skip the 
 
 When `$VAULT_DIR` resolves:
 
-1. **Derive the slug now** (do not wait for Step 4.5). Take the video title from `report.md` frontmatter, slugify (lowercase, ASCII-only, hyphens, max 60 chars), append `-YYYY-MM-DD`. Example: `karpathy-claude-md-43k-installs-2026-05-24`.
-2. **Create the staging dir:** `mkdir -p "$VAULT_DIR/raw/watched/<slug>"`.
+1. **Derive the slug now** (do not wait for Step 4.5). Take the video title from `report.md` frontmatter, slugify (lowercase, ASCII-only, hyphens, max 60 chars), append `-YYYY-MM-DD-HHMMSS` using this run's start time, so two watches of the same video never share a directory. Example: `karpathy-claude-md-43k-installs-2026-05-24-143052`.
+2. **Create the staging dir:** `mkdir -p "$VAULT_DIR/raw/watched" && mkdir "$VAULT_DIR/raw/watched/<slug>"`. The second `mkdir` deliberately has no `-p`: if it fails because the directory already exists, append `-2`, `-3`, … to the slug until it succeeds. Never write into a directory this run did not create, and remember the exact path that succeeded — every later step uses that path.
 3. **Copy `report.md` + every hero frame** (filenames in the report frontmatter under `hero_frames:`) into that dir. The report MUST live inside the vault for Obsidian to open it.
 4. **Open in Obsidian via URL scheme** (macOS). The vault URL-name is the final component of `$VAULT_DIR` with spaces URL-encoded as `%20`:
    ```bash
@@ -193,10 +193,10 @@ When `$VAULT_DIR` resolves:
 
 Rationale: the report is the leverage point of /watch. If the user reads everything in Obsidian, opening in Preview or VS Code defeats the purpose. Staging at 4.4 also means Step 4.5's "Yes / Stage" branches are no-ops on the copy step (the file is already in the vault); they only differ in whether the Ingest op runs.
 
-**Cleanup implication for Step 4.5:** if the user picks "No, drop it" at 4.5 AND a vault was staged at 4.4, ALSO remove that one staging directory. Shell variables do not survive between Bash calls, so re-derive `$VAULT_DIR` in the *same* command and refuse to run on an empty slug — otherwise the path collapses to `/raw/watched/` and takes every previously staged report with it:
+**Cleanup implication for Step 4.5:** if the user picks "No, drop it" at 4.5 AND a vault was staged at 4.4, ALSO remove that one staging directory — ONLY the exact path whose `mkdir` succeeded in this run, never a pre-existing directory and never a path re-derived from the title. Shell variables do not survive between Bash calls, so re-derive `$VAULT_DIR` in the *same* command and refuse to run on an empty slug — otherwise the path collapses to `/raw/watched/` and takes every previously staged report with it:
 
 ```bash
-SLUG='<slug>'   # literal, already derived; must be non-empty
+SLUG='<slug>'   # literal: the exact directory name this run created at 4.4; must be non-empty
 VAULT_DIR="${WATCH_VAULT_DIR:?vault not set}"
 [ -n "$SLUG" ] && [ -d "$VAULT_DIR/raw/watched/$SLUG" ] && rm -rf "$VAULT_DIR/raw/watched/$SLUG"
 ```
@@ -214,7 +214,7 @@ Do NOT drop the vault copy if they picked Yes or Stage.
 Routing based on response:
 
 **A. Yes (same or different angle):**
-1. Derive the slug: take the video title from `report.md` frontmatter, slugify (lowercase, ASCII-only, hyphens, max 60 chars), append `-YYYY-MM-DD`. Example: `me-at-the-zoo-2026-05-24`.
+1. Reuse the `<slug>` from Step 4.4 — the exact directory this run created. Do not re-derive it from the title.
 2. Confirm the staging dir exists at `$VAULT_DIR/raw/watched/<slug>/` (Step 4.4 already created it).
 3. The report + hero frames are already copied there from Step 4.4.
 4. **If "different angle":** Re-edit the TL;DR + Entities + Concepts sections of the copied report to reflect the new angle the user specified, before running ingest.
@@ -227,7 +227,7 @@ Routing based on response:
 2. Do NOT touch the wiki. Do NOT append to `log.md`.
 3. Tell the user in chat: "Staged at `$(basename $VAULT_DIR)/raw/watched/<slug>/`. Run an Ingest op against it when you're ready."
 
-**C. No, drop it:** proceed to Step 5 (cleanup) — and undo the pre-staging using the guarded command in the Step 4.4 cleanup note (never a bare `rm -rf "$VAULT_DIR/raw/watched/<slug>"`, which deletes the whole staging tree when either variable is empty).
+**C. No, drop it:** proceed to Step 5 (cleanup) — and undo the pre-staging of the directory this run created at 4.4, using the guarded command in the Step 4.4 cleanup note (never a bare `rm -rf "$VAULT_DIR/raw/watched/<slug>"`, which deletes the whole staging tree when either variable is empty).
 
 The "different angle" path is what makes /watch truly plug-and-play — the user can watch a video for one reason, then on the way out decide it's actually more useful for a different concept, and the resulting wiki entry reframes accordingly.
 
