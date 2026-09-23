@@ -1,10 +1,10 @@
 {
-  "name": "claude-watch",
+  "name": "watch-skill",
   "metadata": {
-    "description": "Give Claude a video input. /watch downloads, extracts scene-change frames, microscopes the 0-10s hook, transcribes, and optionally auto-saves to your Obsidian vault."
+    "description": "Maintained fork of taoufik123-collab/claude-watch: Give Claude a video input. /watch downloads, extracts scene-change frames, microscopes the 0-10s hook, transcribes, and optionally auto-saves to your Obsidian vault."
   },
   "owner": {
-    "name": "taoufik"
+    "name": "Viktor Gamov"
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
       },
       "source": "./",
       "category": "productivity",
-      "homepage": "https://github.com/taoufik123-collab/claude-watch"
+      "homepage": "https://github.com/gAmUssA/watch-skill"
     }
   ]
 }

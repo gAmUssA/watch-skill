@@ -1,5 +1,7 @@
 # /watch
 
+> **Maintained fork** of [taoufik123-collab/claude-watch](https://github.com/taoufik123-collab/claude-watch). Upstream has 15+ open fix PRs and no activity since July 2026; this fork adopts the good ones (ffmpeg 7+/9 fix, even frame coverage on long videos, `--no-whisper` privacy fix, shell-injection and `rm -rf` hardening, native-language captions). See [FORK.md](FORK.md) for exactly what was merged and why.
+
 **Give Claude the ability to watch any video.**
 
 > Paste a URL or a local file and Claude *watches* it — **scene-change frame extraction** (one frame per cut instead of every-N-seconds), a **0-10s hook microscope** (dense frames + word-level Whisper on the opening, where every video earns or loses your attention), and **optional Obsidian auto-save** so a watched video becomes a connected wiki entry without copy-paste.
@@ -10,15 +12,15 @@
 
 Claude Code:
 ```
-/plugin marketplace add taoufik123-collab/claude-watch
-/plugin install watch@claude-watch
+/plugin marketplace add gAmUssA/watch-skill
+/plugin install watch@watch-skill
 ```
 
-claude.ai (web): [download `watch.skill`](https://github.com/taoufik123-collab/claude-watch/releases/latest) and drop it into Settings → Capabilities → Skills.
+claude.ai (web): [download `watch.skill`](https://github.com/gAmUssA/watch-skill/releases/latest) and drop it into Settings → Capabilities → Skills.
 
 Codex / generic skills:
 ```bash
-git clone https://github.com/taoufik123-collab/claude-watch.git ~/.codex/skills/watch
+git clone https://github.com/gAmUssA/watch-skill.git ~/.codex/skills/watch
 ```
 
 Zero config to start — `yt-dlp` and `ffmpeg` install on first run via `brew` on macOS (Linux/Windows print exact commands). Captions cover most public videos for free. Whisper API key is only needed when a video has no captions. Set `$WATCH_VAULT_DIR` to point at your Obsidian vault for auto-save, or leave it unset and the skill skips the ingest step quietly.
@@ -87,23 +89,23 @@ When the user names a moment ("around 2:30", "the last 30 seconds", "from 0:45 t
 | Surface | Install |
 |---------|---------|
 | **Claude Code** | `/plugin marketplace add taoufik123-collab/claude-watch` then `/plugin install watch@claude-watch` |
-| **claude.ai** (web) | [Download `watch.skill`](https://github.com/taoufik123-collab/claude-watch/releases/latest) → Settings → Capabilities → Skills → `+` |
-| **Codex** | `git clone https://github.com/taoufik123-collab/claude-watch.git ~/.codex/skills/watch` |
+| **claude.ai** (web) | [Download `watch.skill`](https://github.com/gAmUssA/watch-skill/releases/latest) → Settings → Capabilities → Skills → `+` |
+| **Codex** | `git clone https://github.com/gAmUssA/watch-skill.git ~/.codex/skills/watch` |
 | **Manual / dev** | `git clone https://github.com/taoufik123-collab/claude-watch.git ~/.claude/skills/watch` |
 | **Configuration** | Optional: `export WATCH_VAULT_DIR=/path/to/your/obsidian/vault` to enable auto-save. Auto-detects `~/Second brain/`, `~/Documents/Obsidian/`, `~/Obsidian/`. |
 
 ### Claude Code
 
 ```
-/plugin marketplace add taoufik123-collab/claude-watch
-/plugin install watch@claude-watch
+/plugin marketplace add gAmUssA/watch-skill
+/plugin install watch@watch-skill
 ```
 
 Update later with `/plugin update watch@claude-watch`.
 
 ### claude.ai (web)
 
-1. [Download `watch.skill`](https://github.com/taoufik123-collab/claude-watch/releases/latest) from the latest release.
+1. [Download `watch.skill`](https://github.com/gAmUssA/watch-skill/releases/latest) from the latest release.
 2. Go to Settings → Capabilities → Skills.
 3. Click `+` and drop the file in.
 
@@ -112,7 +114,7 @@ Enable "Code execution and file creation" under Capabilities first — the skill
 ### Codex
 
 ```bash
-git clone https://github.com/taoufik123-collab/claude-watch.git ~/.codex/skills/watch
+git clone https://github.com/gAmUssA/watch-skill.git ~/.codex/skills/watch
 ```
 
 ### Manual (developer)

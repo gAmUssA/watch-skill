@@ -1,12 +1,27 @@
 {
   "name": "watch",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "Let Claude watch a video. Downloads with yt-dlp, extracts scene-change frames with ffmpeg, runs a dense 0-10s hook microscope, pulls captions or falls back to Whisper, emits a structured report.md, and (optionally) auto-saves into your Obsidian vault.",
   "author": {
-    "name": "taoufik"
+    "name": "taoufik (upstream); fork maintained by Viktor Gamov"
   },
-  "homepage": "https://github.com/taoufik123-collab/claude-watch",
-  "repository": "https://github.com/taoufik123-collab/claude-watch",
+  "homepage": "https://github.com/gAmUssA/watch-skill",
+  "repository": "https://github.com/gAmUssA/watch-skill",
   "license": "MIT",
-  "keywords": ["video", "watch", "youtube", "vimeo", "tiktok", "transcription", "whisper", "yt-dlp", "ffmpeg", "multimodal", "frames", "obsidian", "second-brain", "hook-microscope"]
+  "keywords": [
+    "video",
+    "watch",
+    "youtube",
+    "vimeo",
+    "tiktok",
+    "transcription",
+    "whisper",
+    "yt-dlp",
+    "ffmpeg",
+    "multimodal",
+    "frames",
+    "obsidian",
+    "second-brain",
+    "hook-microscope"
+  ]
 }

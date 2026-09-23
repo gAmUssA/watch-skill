@@ -1,8 +1,8 @@
 {
   "name": "watch",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "Let Claude (or Codex) watch a video — scene-change frames + transcript + structured report, with a 0-10s hook microscope and optional Obsidian auto-save.",
-  "repository": "https://github.com/taoufik123-collab/claude-watch",
+  "repository": "https://github.com/gAmUssA/watch-skill",
   "author": "taoufik",
   "license": "MIT"
 }

@@ -2,6 +2,25 @@
 
 All notable changes to `/watch` are documented here.
 
+## [0.3.1] — 2026-09-23 (gAmUssA/watch-skill fork)
+
+First release of the maintained fork. Integrates open upstream PRs; see [FORK.md](FORK.md).
+
+### Fixed
+- Scene-change extraction on ffmpeg 7+/9: `-vsync` → `-fps_mode` (upstream #11; issues #13, #17).
+- `--no-whisper` no longer uploads the 0-10s hook audio (upstream #20).
+- Whisper honours `--start`/`--end` and fails with an actionable message over the 25 MB limit (upstream #4).
+- Windows: UTF-8 stdio, no false permission warning, platform-correct install hints (upstream #20).
+- Report frontmatter scalars are JSON-quoted so a video title can't break the YAML (upstream #20).
+- TikTok `eng-US` caption track recognised (adapted from upstream #18).
+
+### Security
+- SKILL.md passes the source single-quoted (a `$(...)` in a "URL" could execute), stops collecting API keys in chat, and never `rm -rf`s a user-supplied `--out-dir` or a pre-existing vault directory (upstream #20, #21).
+- yt-dlp downloads are bounded: no live streams, 2 GB max, 30 min timeout (upstream #20).
+
+### Added
+- Unit tests for VTT parsing (upstream #7) and the audit regressions (upstream #20).
+
 ## [0.3.0] — 2026-06-25
 
 A reliability + cost pass driven by a head-to-head review of `/watch` against a
