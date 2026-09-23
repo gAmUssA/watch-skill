@@ -19,27 +19,12 @@ from report import write_report  # noqa: E402
 
 
 class TestFfmpegNineCompat(unittest.TestCase):
-    """ffmpeg 9 removed -vsync; hardcoding it aborted every scene-change run."""
+    """ffmpeg 7+ removed -vsync; hardcoding it aborted every scene-change run."""
 
-    def setUp(self):
-        frames._vfr_flag.cache_clear()
-
-    def tearDown(self):
-        frames._vfr_flag.cache_clear()
-
-    def test_prefers_fps_mode_when_ffmpeg_advertises_it(self):
-        completed = mock.Mock(stdout="-fps_mode[:<stream_spec>]  set framerate mode", stderr="")
-        with mock.patch("frames.subprocess.run", return_value=completed):
-            self.assertEqual(frames._vfr_flag(), ("-fps_mode", "vfr"))
-
-    def test_falls_back_to_vsync_on_pre_5_builds(self):
-        completed = mock.Mock(stdout="-vsync <int>  set video sync method", stderr="")
-        with mock.patch("frames.subprocess.run", return_value=completed):
-            self.assertEqual(frames._vfr_flag(), ("-vsync", "vfr"))
-
-    def test_probe_failure_does_not_raise(self):
-        with mock.patch("frames.subprocess.run", side_effect=OSError("no ffmpeg")):
-            self.assertEqual(frames._vfr_flag(), ("-vsync", "vfr"))
+    def test_frames_never_passes_removed_vsync_flag(self):
+        source = (SCRIPT_DIR / "frames.py").read_text(encoding="utf-8")
+        self.assertNotIn('"-vsync"', source)
+        self.assertIn('"-fps_mode", "vfr"', source)
 
 
 class TestNoWhisperIsHonoured(unittest.TestCase):
