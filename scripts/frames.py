@@ -281,7 +281,7 @@ def _detect_scene_times(
     if end_seconds is not None:
         cmd += ["-to", f"{end_seconds:.3f}"]
     cmd += ["-i", str(Path(video_path).resolve()), "-vf", vf,
-            "-vsync", "vfr", "-an", "-f", "null", "-"]
+            "-fps_mode", "vfr", "-an", "-f", "null", "-"]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     offset = start_seconds or 0.0
