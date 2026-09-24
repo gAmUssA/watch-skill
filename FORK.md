@@ -2,7 +2,7 @@
 
 `gAmUssA/watch-skill` is a maintained fork of [taoufik123-collab/claude-watch](https://github.com/taoufik123-collab/claude-watch) (itself built on [bradautomates/claude-video](https://github.com/bradautomates/claude-video)).
 
-**Why it exists:** as of 2026-09-23, upstream `/watch` fails on any current ffmpeg (7+ removed `-vsync`). Nine separate PRs fix that, and 15+ more PRs are open, but the maintainer hasn't merged anything since the last upstream commit on 2026-07-24. This fork adopts the reviewed, working PRs so the skill runs today. The fork will track upstream if it becomes active again.
+As of 2026-09-23, upstream `/watch` fails on any current ffmpeg (7+ removed `-vsync`). Nine separate PRs fix that, and 15+ more PRs are open, but the maintainer hasn't merged anything since the last upstream commit on 2026-07-24. This fork adopts the reviewed, working PRs so the skill runs today. The fork will track upstream if it becomes active again.
 
 ## Install
 
@@ -47,5 +47,7 @@ git log --oneline main..pr/<N>                                           # revie
 git cherry-pick -x <sha>                                                 # adopt, keeping authorship
 cd scripts && python3 -m unittest discover -s tests                      # must stay green
 ```
+
+Public text in this repo (README, FORK.md, CHANGELOG, commit messages) goes through the `jbaruch/blog-writer` (Tessl) three-pass AI-slop check before it's pushed.
 
 Rules for adopting a PR: read the full diff (this skill runs shell commands on your machine), keep changes minimal and attributed, run the test suite plus one real `/watch` end-to-end, and record the decision in the tables above.
