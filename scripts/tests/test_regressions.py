@@ -38,7 +38,7 @@ class TestNoWhisperIsHonoured(unittest.TestCase):
 
     def test_allow_whisper_false_never_loads_a_key_or_uploads(self):
         with mock.patch.object(hook_mod, "extract", return_value=[]), \
-             mock.patch.object(hook_mod, "load_api_key") as load_key, \
+             mock.patch.object(hook_mod, "resolve_backend") as load_key, \
              mock.patch.object(hook_mod, "transcribe_audio") as upload, \
              mock.patch.object(hook_mod.subprocess, "run") as ffmpeg:
             result = hook_mod.analyse_hook(
@@ -52,9 +52,9 @@ class TestNoWhisperIsHonoured(unittest.TestCase):
         ffmpeg.assert_not_called()
         self.assertEqual(result["words"], [])
 
-    def test_default_still_detects_a_key(self):
+    def test_default_resolves_a_backend(self):
         with mock.patch.object(hook_mod, "extract", return_value=[]), \
-             mock.patch.object(hook_mod, "load_api_key", return_value=("groq", "k")) as load_key, \
+             mock.patch.object(hook_mod, "resolve_backend", return_value=("local", None, "ok")) as load_key, \
              mock.patch.object(hook_mod, "transcribe_audio", return_value=([], None, [])), \
              mock.patch.object(hook_mod.subprocess, "run"):
             hook_mod.analyse_hook(
