@@ -27,6 +27,13 @@ Cherry-picked with `-x`, so every commit keeps its original author and records t
 | #18 | @scotch333 | TikTok `eng-US` captions | Adapted: added `eng-US` to #3's fallback chain instead of the blanket `en.*,eng.*` regex. |
 | #21 | @jlewisd2006-crypto | Vault staging never reuses or deletes a pre-existing directory | Merged with #20's guarded `rm -rf` command. |
 
+## Fork-only changes
+
+| Version | Change |
+|---|---|
+| 0.4.0 | Local whisper.cpp transcription by default; Groq/OpenAI only on explicit opt-in (`--whisper groq\|openai` or `WATCH_ALLOW_API=1`). |
+| 0.4.0 | Full summary and Frame timeline report sections, adapted from [steipete/summarize](https://github.com/steipete/summarize) (MIT) without its Node runtime. |
+
 ## Not adopted (yet)
 
 | PR | Why |

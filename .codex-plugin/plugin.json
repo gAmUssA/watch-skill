@@ -1,6 +1,6 @@
 {
   "name": "watch",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Let Claude (or Codex) watch a video — scene-change frames + transcript + structured report, with a 0-10s hook microscope and optional Obsidian auto-save.",
   "repository": "https://github.com/gAmUssA/watch-skill",
   "author": "taoufik",

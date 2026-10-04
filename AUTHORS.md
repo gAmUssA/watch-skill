@@ -23,3 +23,11 @@ Maintains [gAmUssA/watch-skill](https://github.com/gAmUssA/watch-skill), which i
 community fixes that were submitted upstream as pull requests. Each adopted change keeps its
 original author in git history (`cherry picked from commit …`); contributors are listed in
 [FORK.md](FORK.md).
+
+## Ported code
+
+**Peter Steinberger** — [steipete/summarize](https://github.com/steipete/summarize) (MIT, © 2026)
+
+The Full summary rules (`scripts/summary_prompt.py`) and the frame/transcript windows behind the
+Frame timeline (`scripts/timeline.py`) are adapted from Summarize's summary prompts and slide-text
+code. No Summarize code runs at runtime; there is no Node dependency.

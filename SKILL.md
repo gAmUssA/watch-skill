@@ -1,6 +1,6 @@
 ---
 name: watch
-description: Watch a video (URL or local path) like an editor. Auto-classifies the video (talking-head vs visually-dense) and spends frame budget only where it pays off; extracts scene-change frames with even coverage across the whole runtime, pacing metrics (cuts/min, shot length), and a dense 0-10s hook microscope; pulls a native-language transcript from captions (any language) or Whisper. Produces an ingest-ready `report.md` and, after answering the user, optionally auto-ingests the analysis into your Obsidian vault (configurable via `$WATCH_VAULT_DIR`) — tied to *why* the user watched it.
+description: Watch a video (URL or local path) like an editor. Auto-classifies the video (talking-head vs visually-dense) and spends frame budget only where it pays off; extracts scene-change frames with even coverage across the whole runtime, pacing metrics (cuts/min, shot length), and a dense 0-10s hook microscope; pulls a native-language transcript from captions (any language) or local Whisper (whisper.cpp, no API key). Produces an ingest-ready `report.md` and, after answering the user, optionally auto-ingests the analysis into your Obsidian vault (configurable via `$WATCH_VAULT_DIR`) — tied to *why* the user watched it.
 argument-hint: "<video-url-or-path> [why you're watching it]"
 allowed-tools: Bash, Read, AskUserQuestion
 homepage: https://github.com/taoufik123-collab/claude-watch
@@ -12,7 +12,7 @@ user-invocable: true
 
 # /watch — Claude watches a video
 
-You don't have a video input; this skill gives you one. A Python script downloads the video, extracts frames as JPEGs (one per detected shot via scene-change), gets a timestamped transcript (native captions first, then Whisper API as fallback), runs editorial pacing metrics, and microscopes the first 10 seconds at higher density. You then `Read` each frame path to see the images, combine them with the transcript to answer the user, fill the structured `report.md`, and offer to ingest the analysis into Taoufik's Second Brain.
+You don't have a video input; this skill gives you one. A Python script downloads the video, extracts frames as JPEGs (one per detected shot via scene-change), gets a timestamped transcript (native captions first, then local whisper.cpp as fallback), runs editorial pacing metrics, and microscopes the first 10 seconds at higher density. You then `Read` each frame path to see the images, combine them with the transcript to answer the user, fill the structured `report.md`, and offer to ingest the analysis into Taoufik's Second Brain.
 
 ## What v3 does differently
 
@@ -24,7 +24,7 @@ You don't have a video input; this skill gives you one. A Python script download
 
 - **Scene-change frame sampling** — one frame per detected shot instead of uniform ticks. Cuts the frame budget on long videos while capturing every transition.
 - **Editorial pacing metrics** — cuts/min, mean shot length, motion (when available). Lets you reason about pacing the way an editor does.
-- **Hook microscope** — first 10s auto-runs at 2 fps + word-level Whisper. The single most leveraged 10 seconds of any video deserves dense treatment.
+- **Hook microscope** — first 10s auto-runs at 2 fps + word-level local Whisper. The single most leveraged 10 seconds of any video deserves dense treatment.
 - **Structured `report.md`** — every watch emits an ingest-shaped report at `<workdir>/report.md` with TL;DR, key moments, hook breakdown, editorial profile, quotable moments, entities, concepts, and transcript. Narrative sections are emitted as `<!-- pending Claude fill: ... -->` markers — you fill them in before offering ingest.
 - **Step 4.5 — Ingest gate** — after answering the user, you ask once: "Want to ingest this into your Obsidian vault?" If yes, and a vault is detected, you read `$VAULT_DIR/CLAUDE.md` (if it exists) and run that vault's Ingest op against the report.
 
@@ -57,7 +57,7 @@ The vault's URL-name (for the `obsidian://` URL scheme in Step 4.4) is the final
 
 **Python interpreter:** every `python3 ...` command in this skill is for macOS/Linux. On **Windows**, substitute `python` — the `python3` command on Windows is the Microsoft Store stub and will not run the script.
 
-Before every `/watch` run, verify that dependencies and an API key are in place:
+Before every `/watch` run, verify that dependencies and local Whisper are in place:
 
 ```bash
 python3 "${CLAUDE_SKILL_DIR}/scripts/setup.py" --check
@@ -70,8 +70,7 @@ On non-zero exit, follow the table:
 | Exit | Meaning | Action |
 |------|---------|--------|
 | `2` | Missing binaries (`ffmpeg` / `ffprobe` / `yt-dlp`) | Run installer |
-| `3` | No Whisper API key | Run installer to scaffold `.env`, then ask user for a key |
-| `4` | Both missing | Run installer, then ask for a key |
+| `3` | Local Whisper not set up (`whisper-cli` or its model missing) | Run installer; captioned videos still work meanwhile |
 
 The installer is idempotent — safe to re-run:
 
@@ -79,11 +78,11 @@ The installer is idempotent — safe to re-run:
 python3 "${CLAUDE_SKILL_DIR}/scripts/setup.py"
 ```
 
-On macOS with Homebrew, it auto-installs `ffmpeg` and `yt-dlp`. On Linux/Windows, it prints the exact install commands for the user to run. It scaffolds `~/.config/watch/.env` with commented placeholders at `0600` perms, and writes `SETUP_COMPLETE=true` once deps + a key are in place so the next session knows this user has already been through the wizard.
+On macOS with Homebrew, it auto-installs `ffmpeg`, `yt-dlp` and `whisper-cpp`, then downloads the Whisper model (`ggml-large-v3-turbo-q5_0`, about 550 MB) to `~/.cache/watch/models/`. On Linux/Windows, it prints the exact install commands for the user to run. It scaffolds `~/.config/watch/.env` at `0600` perms and writes `SETUP_COMPLETE=true` once local Whisper is ready.
 
-**If an API key is still missing after install:** do **not** ask the user to type the key to you. Anything they send in chat is persisted in the session transcript and replayed to the model on every later turn, and you would then hold a live credential for the rest of a session that goes on to read untrusted video transcripts. Instead, tell them to paste it into `~/.config/watch/.env` themselves — `setup.py` has already scaffolded that file with `GROQ_API_KEY=` and `OPENAI_API_KEY=` placeholders and prints its path — then re-run `/watch`. If they don't want to set up Whisper, proceed with `--no-whisper` and tell them videos without native captions will come back frames-only.
+**API keys are optional.** Transcription runs locally and never needs a key. A Groq or OpenAI key in `~/.config/watch/.env` is used only when the user passes `--whisper groq|openai`, or sets `WATCH_ALLOW_API=1` to allow a cloud fallback when local Whisper is missing. Those calls are billed per use. Never ask the user to type a key into chat: anything sent there stays in the session transcript.
 
-**Structured mode (optional):** `python3 "${CLAUDE_SKILL_DIR}/scripts/setup.py" --json` emits `{status, first_run, missing_binaries, whisper_backend, has_api_key, config_file, platform}` where `status` is one of `ready | needs_install | needs_key | needs_install_and_key`. Use this when you need to branch on specifics (e.g. "is this the user's very first run?" → `first_run: true`).
+**Structured mode (optional):** `python3 "${CLAUDE_SKILL_DIR}/scripts/setup.py" --json` emits `{status, first_run, missing_binaries, whisper_backend, local_whisper, has_api_key, api_key_backend, config_file, platform}` where `status` is one of `ready | needs_install | needs_local_whisper`. Use this when you need to branch on specifics (e.g. "is this the user's very first run?" → `first_run: true`).
 
 Within a single session, you can skip Step 0 on follow-up `/watch` calls — once `--check` returned 0, nothing about the environment changes between turns.
 
@@ -122,10 +121,10 @@ Optional flags:
 - `--resolution W` — change frame width in px (default 512; bump to 1024 only if the user needs to read on-screen text)
 - `--fps F` — override auto-fps (clamped to 2 fps max). Setting `--fps` disables scene-change sampling.
 - `--out-dir DIR` — keep working files somewhere specific (default: an auto-generated tmp dir)
-- `--whisper groq|openai` — force a specific Whisper backend (default: prefer Groq if both keys exist)
+- `--whisper local|groq|openai` — transcription backend. Default is local whisper.cpp; `groq`/`openai` upload audio to that API and need its key
 - `--no-whisper` — disable the Whisper fallback entirely (frames-only if no captions)
 - `--no-scene-change` — force uniform frame sampling (debug only; usually leave on)
-- `--no-hook-microscope` — skip the 0-10s dense pass (saves ~1 Whisper call)
+- `--no-hook-microscope` — skip the 0-10s dense pass (saves one short local Whisper run)
 
 ### Focusing on a section (higher frame rate)
 
@@ -167,6 +166,8 @@ First, answer the user's question in chat citing timestamps.
 
 Then, **fill in the pending markers in `report.md` using the Edit tool**. Walk every `<!-- pending Claude fill: ... -->` in order:
 - **TL;DR** — 3-5 bullets through the lens of the user's intent (read from the frontmatter)
+- **Full summary** — a sectioned narrative of the whole video, written by you in this session (no extra model call). Follow the rules in the marker: length preset by video duration, `### ` headings, 1-2 short italic excerpts, no sponsor reads, nothing beyond what the transcript and frames show. Rules adapted from [steipete/summarize](https://github.com/steipete/summarize) (MIT).
+- **Frame timeline** is generated by the script (each frame with the transcript said while it's on screen). Leave it as is: it's transcript text.
 - **Key moments** — 5-10 timestamped bullets
 - **Hook microscope interpretation** — frame-by-frame: visual change × what's said; identify the hook pattern (question, contrarian claim, in-medias-res, demo-first, etc.)
 - **Editorial profile fingerprint** — one-line style summary inferred from pacing numbers + hero frames
@@ -243,19 +244,18 @@ If the user might ask follow-ups, leave everything in place either way — re-ru
 The script gets a timestamped transcript in one of two ways:
 
 1. **Native captions (free, preferred).** yt-dlp pulls manual or auto-generated subtitles from the source platform if available.
-2. **Whisper API fallback.** If no captions came back (or the source is a local file), the script extracts audio (`ffmpeg -vn -ac 1 -ar 16000 -b:a 64k`, ~0.5 MB/min) and uploads it to whichever Whisper API has a key configured:
-   - **Groq** — `whisper-large-v3`. Preferred default: cheaper, faster. Get a key at console.groq.com/keys.
-   - **OpenAI** — `whisper-1`. Fallback. Get a key at platform.openai.com/api-keys.
+2. **Local Whisper fallback (default).** If no captions came back (or the source is a local file), the script extracts audio and transcribes it on this machine with whisper.cpp (`whisper-cli`, Metal-accelerated on Apple Silicon). It needs no key and sends nothing off the machine. The same backend gives the hook microscope its word-level timestamps. Model: `WATCH_WHISPER_MODEL` (path) or `WATCH_WHISPER_MODEL_NAME` (default `large-v3-turbo-q5_0`); language: `WATCH_WHISPER_LANGUAGE` (default `auto`).
+3. **Cloud Whisper (opt-in).** `--whisper groq` (`whisper-large-v3`) or `--whisper openai` (`whisper-1`) upload the audio to that API using its key from `~/.config/watch/.env`. With `WATCH_ALLOW_API=1`, a configured key is also used when local Whisper is unavailable. A key alone never triggers an upload.
 
-Both keys live in `~/.config/watch/.env`. The script prefers Groq when both are set; override with `--whisper openai` to force OpenAI. Use `--no-whisper` to skip the fallback entirely.
+Use `--no-whisper` to skip transcription entirely.
 
 ## Failure modes and handling
 
-- **Setup preflight failed** → run `python3 "${CLAUDE_SKILL_DIR}/scripts/setup.py"` (auto-installs ffmpeg/yt-dlp via brew on macOS, scaffolds the `.env`). For API key, ask the user via `AskUserQuestion` and write it to `~/.config/watch/.env`.
-- **No transcript available** → captions missing AND (no Whisper key OR Whisper API failed). Script prints a hint pointing to setup. Proceed frames-only and tell the user.
+- **Setup preflight failed** → run `python3 "${CLAUDE_SKILL_DIR}/scripts/setup.py"` (auto-installs ffmpeg, yt-dlp and whisper-cpp via brew on macOS, downloads the Whisper model, scaffolds the `.env`).
+- **No transcript available** → captions missing AND local Whisper not set up (or it failed). Script prints a hint pointing to setup. Proceed frames-only and tell the user.
 - **Long video warning printed** → acknowledge it in your answer. Offer to re-run focused on a specific section via `--start`/`--end` rather than a sparse full-video scan.
 - **Download fails** → yt-dlp's error goes to stderr. If it's a login-required or region-locked video, tell the user plainly; do not keep retrying.
-- **Whisper request fails** → the error is printed to stderr (likely: invalid key, rate limit, or 25 MB upload limit on a very long video). The report will say "none available" for transcript. You can retry with `--whisper openai` if Groq failed (or vice versa).
+- **Whisper fails** → the error is printed to stderr. Locally that usually means a missing model (`setup.py --download-model`); for opt-in cloud runs, an invalid key, a rate limit, or the 25 MB upload limit. The report then says no transcript is available.
 - **Report has unfilled `<!-- pending Claude fill: ... -->` markers** → you skipped Step 4. Go back, read the report, fill every marker via Edit, then offer ingest. Never ingest a half-filled report — the Second Brain Ingest op will produce sparse/wrong entity pages.
 - **Ingest fails partway** → do not roll back. The Second Brain Ingest op is idempotent on re-run (it updates existing pages rather than duplicating). Tell the user what failed, leave the staged artifact in `raw/watched/<slug>/`, and they can re-run by saying "ingest the staged report at `<slug>`".
 
@@ -273,16 +273,16 @@ If you already watched a video this session and the user asks a follow-up, do **
 **What this skill does:**
 - Runs `yt-dlp` locally to download the video and pull native captions when the source supports them (public data; the request goes directly to whatever host the URL points at)
 - Runs `ffmpeg` / `ffprobe` locally to extract frames as JPEGs and, when Whisper is needed, a mono 16 kHz audio clip
-- Sends the extracted audio clip to Groq's Whisper API (`api.groq.com/openai/v1/audio/transcriptions`) when `GROQ_API_KEY` is set (preferred — cheaper, faster)
-- Sends the extracted audio clip to OpenAI's audio transcription API (`api.openai.com/v1/audio/transcriptions`) when `OPENAI_API_KEY` is set and Groq is not, or when `--whisper openai` is forced
+- Transcribes extracted audio locally with whisper.cpp (`whisper-cli`) by default; downloads its model once from huggingface.co into `~/.cache/watch/models/`
+- Sends audio to Groq (`api.groq.com/openai/v1/audio/transcriptions`) or OpenAI (`api.openai.com/v1/audio/transcriptions`) only on explicit opt-in: `--whisper groq|openai`, or `WATCH_ALLOW_API=1` when local Whisper is unavailable
 - Writes the downloaded video, frames, audio, and an intermediate transcript to a working directory under the system temp dir (or `--out-dir` if specified) so Claude can `Read` them
-- Reads / creates `~/.config/watch/.env` (mode `0600`) to store the Whisper API key(s) and a `SETUP_COMPLETE` marker. As a fallback, also reads `.env` in the current working directory
+- Reads / creates `~/.config/watch/.env` (mode `0600`) to store optional Whisper API keys, the `WATCH_ALLOW_API` opt-in and a `SETUP_COMPLETE` marker. As a fallback, also reads `.env` in the current working directory
 - Reads `$VAULT_DIR/CLAUDE.md` at orchestration time (only when ingest is requested and the file exists) to follow that vault's Ingest operation definition
 - Writes a structured `report.md` plus copies of hero frames into `$VAULT_DIR/raw/watched/<slug>/` when a vault is detected at Step 4.4
 - When ingest is consented to: reads and writes pages under `$VAULT_DIR/wiki/` (entities, concepts, sources, index.md) and appends to `$VAULT_DIR/log.md` — following the actions defined by the vault's Ingest op (or a generic fallback if no `CLAUDE.md` is present)
 
 **What this skill does NOT do:**
-- Does not upload the video itself to any API — only the extracted audio goes out, and only when native captions are missing AND Whisper is not disabled with `--no-whisper`
+- Does not upload the video itself to any API — by default nothing is uploaded; audio goes to a cloud API only on the explicit opt-in above
 - Does not access any platform account (no login, no session cookies, no posting)
 - Does not share API keys between providers (Groq key only goes to `api.groq.com`, OpenAI key only goes to `api.openai.com`)
 - Does not log, cache, or write API keys to stdout, stderr, or output files
@@ -290,6 +290,6 @@ If you already watched a video this session and the user asks a follow-up, do **
 - Does not write to the Second Brain without explicit user consent at the Step 4.5 prompt
 - Does not silently overwrite wiki claims — contradictions surface as WARN flags per the Ingest op contract
 
-**Bundled scripts:** `scripts/watch.py` (entry point), `scripts/download.py` (yt-dlp wrapper), `scripts/frames.py` (ffmpeg uniform + scene-change extraction + hero selection), `scripts/pacing.py` (editorial metrics), `scripts/hook.py` (0-10s microscope), `scripts/report.py` (structured report emitter), `scripts/transcribe.py` (caption selection + Whisper orchestration), `scripts/whisper.py` (Groq / OpenAI clients, supports word-level timestamps), `scripts/setup.py` (preflight + installer)
+**Bundled scripts:** `scripts/watch.py` (entry point), `scripts/download.py` (yt-dlp wrapper), `scripts/frames.py` (ffmpeg uniform + scene-change extraction + hero selection), `scripts/pacing.py` (editorial metrics), `scripts/hook.py` (0-10s microscope), `scripts/report.py` (structured report emitter), `scripts/transcribe.py` (caption selection + Whisper orchestration), `scripts/whisper.py` (backend selection + opt-in Groq / OpenAI clients), `scripts/whisper_local.py` (local whisper.cpp runner + model download), `scripts/setup.py` (preflight + installer), `scripts/summary_prompt.py` (Full summary rules) and `scripts/timeline.py` (Frame timeline), both adapted from steipete/summarize
 
 Review scripts before first use to verify behavior.

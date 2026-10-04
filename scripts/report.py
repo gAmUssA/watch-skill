@@ -19,6 +19,9 @@ import json
 import sys
 from pathlib import Path
 
+import summary_prompt  # noqa: E402
+import timeline  # noqa: E402
+
 
 def _pending(hint: str) -> str:
     return f"<!-- pending Claude fill: {hint} -->"
@@ -93,6 +96,13 @@ def write_report(
     lines.append(_pending(
         f"3-5 bullets through the lens of: '{intent or 'general summary'}'"
     ))
+    lines.append("")
+
+    transcript_chars = sum(len(seg.get("text", "")) + 1 for seg in transcript_segments)
+    preset = summary_prompt.length_for_duration(duration_seconds)
+    lines.append("## Full summary")
+    lines.append("")
+    lines.append(_pending(summary_prompt.pending_hint(duration_seconds, transcript_chars)))
     lines.append("")
 
     lines.append("## Key moments")
@@ -177,6 +187,17 @@ def write_report(
         "patterns. These map to wiki/concepts/ pages."
     ))
     lines.append("")
+
+    lines.append("## Frame timeline")
+    lines.append("")
+    if all_frames and transcript_segments:
+        lines.append("_What's said while each frame is on screen._")
+        lines.append("")
+        lines.extend(timeline.render(timeline.build_timeline(
+            all_frames, transcript_segments, preset, duration_seconds)))
+    else:
+        lines.append("_Needs both frames and a transcript._")
+        lines.append("")
 
     lines.append("## Transcript")
     lines.append("")

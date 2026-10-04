@@ -2,6 +2,18 @@
 
 All notable changes to `/watch` are documented here.
 
+## [0.4.0] — 2026-10-04 (gAmUssA/watch-skill fork)
+
+### Changed
+- Transcription is local by default: a new whisper.cpp backend (`scripts/whisper_local.py`) handles both the caption-less fallback and the hook microscope's word timestamps. It needs no API key and sends nothing off the machine.
+- Groq and OpenAI Whisper are opt-in: `--whisper groq|openai`, or `WATCH_ALLOW_API=1` to allow a cloud fallback when local Whisper is missing. A key in `.env` alone no longer sends audio anywhere; previously the hook microscope uploaded the first 10 seconds on every run that had a key.
+- `setup.py` installs `whisper-cpp` on macOS and downloads `ggml-large-v3-turbo-q5_0` (~550 MB) to `~/.cache/watch/models/`; `--check` is ready without any key. New `--download-model [name]`.
+- The SessionStart hook checks for local Whisper and stops asking for API keys.
+
+### Added
+- `## Full summary` report section: a sectioned narrative of the whole video that the agent writes in-session, following rules adapted from steipete/summarize (length preset by duration, `###` headings, 1-2 short italic excerpts, sponsor reads omitted, nothing beyond the source).
+- `## Frame timeline` report section: each frame (up to 24, evenly spaced) with the transcript said while it's on screen, using Summarize's window rules (from the frame to the next one, 90-180 s cap, word-boundary truncation). Renders as image cards on sites that show the report.
+
 ## [0.3.1] — 2026-09-23 (gAmUssA/watch-skill fork)
 
 First release of the maintained fork. Integrates open upstream PRs; see [FORK.md](FORK.md).
